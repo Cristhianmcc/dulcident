@@ -55,3 +55,4 @@ En `src/hero/hero.js`:
 - Resortes de la encía (`* 70`, `* 95`, `* 7.5`): firmeza y rebote de la gelatina.
 - `PHRASES`: las frases sarcásticas.
 - `CAVITY`: qué dientes tienen caries.
+# dulcident
