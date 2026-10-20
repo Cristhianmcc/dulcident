@@ -8,7 +8,7 @@ let tooth = null;
 
 window.addEventListener('dulci:pick3d', e => {
   tooth = e.detail.name;
-  picked.innerHTML = `Elegiste: <b>${tooth}</b>`;
+  picked.innerHTML = `Elegiste el <b>${tooth}</b>`;
   err.textContent = '';
 });
 
@@ -16,7 +16,9 @@ window.addEventListener('dulci:pick3d', e => {
 const pain = $('f-pain'), painOut = $('painOut'), painFace = $('painFace');
 const paintPain = () => {
   const v = +pain.value; painOut.textContent = v;
-  painFace.innerHTML = face(40, v <= 3 ? 'smile' : v <= 7 ? 'flat' : 'wow');
+  painFace.innerHTML = face(64, v <= 3 ? 'smile' : v <= 7 ? 'flat' : 'wow');
+  document.getElementById('painWord').textContent = ['Nada', 'Casi nada', 'Poquito', 'Se nota', 'Molesta', 'Duele', 'Duele harto', 'Mucho', 'Muchísimo', '¡Auxilio!'][v - 1];
+  pain.style.setProperty('--fill', `${(v - 1) / 9 * 100}%`);
 };
 pain.addEventListener('input', paintPain); paintPain();
 
@@ -58,10 +60,11 @@ form.addEventListener('submit', e => {
   $('tk-flavor').textContent = choice.flavor;
   $('tk-when').textContent = choice.when;
   paintBonus();
-  ticket.hidden = false;
+  ticket.hidden = false; form.hidden = true;
   ticket.classList.remove('done'); void ticket.offsetWidth; ticket.classList.add('done');
   const pr = ticket.getBoundingClientRect(), br = fx.getBoundingClientRect();
   confetti(pr.left - br.left + pr.width - 70, pr.top - br.top + 40);
   form.querySelector('.submit').textContent = 'Agendado';
 });
+document.getElementById('againTicket').addEventListener('click', () => { ticket.hidden = true; form.hidden = false; form.querySelector('.submit').textContent = 'Agenda tu cita'; });
 form.addEventListener('input', () => { err.textContent = ''; form.querySelector('.submit').textContent = 'Agenda tu cita'; });

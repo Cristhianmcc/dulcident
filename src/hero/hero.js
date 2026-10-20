@@ -36,8 +36,8 @@ async function init(){
   scene.environmentIntensity = .9;
 
   const camera = new THREE.PerspectiveCamera(32, 1, .1, 100);
-  const camTarget = new THREE.Vector3(0, 1.3, 0);
-  camera.position.set(0, 4.7, 12.6);
+  const camTarget = new THREE.Vector3(0, 1.75, 0);
+  camera.position.set(0, 5.6, 13.4);   // un poco desde arriba: se ve el interior de la boca
   camera.lookAt(camTarget);
 
   const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(4, 7, 5); scene.add(key);
@@ -75,10 +75,11 @@ async function init(){
 
   /* ── El arco (herradura) ── */
   const TH = 1.72, A = 1.72, B = 1.5, C = .32;
-  const GUM_RX = .4, GUM_RY = .37;
-  const UPPER = new THREE.Matrix4().compose(new THREE.Vector3(0, 2.12, -.05),
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(-.22, 0, 0)), new THREE.Vector3(1, 1, 1));
-  const UPPER_ROT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-.22, 0, 0));
+  // labios gruesos y boca bien abierta: la mandíbula de arriba sube y se echa hacia atrás
+  const GUM_RX = .5, GUM_RY = .44, JAW_OPEN = -.34;
+  const UPPER = new THREE.Matrix4().compose(new THREE.Vector3(0, 3.05, -.12),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(JAW_OPEN, 0, 0)), new THREE.Vector3(1, 1, 1));
+  const UPPER_ROT = new THREE.Quaternion().setFromEuler(new THREE.Euler(JAW_OPEN, 0, 0));
   const UP = new THREE.Vector3(0, 1, 0);
   const archPoint = (th, o = new THREE.Vector3()) => o.set(A * Math.sin(th), 0, B * Math.cos(th) - C);
   const archTangent = (th, o = new THREE.Vector3()) => o.set(A * Math.cos(th), 0, -B * Math.sin(th)).normalize();
@@ -170,42 +171,63 @@ async function init(){
   }
   buildGum(0); buildGum(1);
 
-  // Las dos masas de encía se juntan atrás, angostándose a media altura
-  function buildPillar(side){
-    const th = side * (TH - .2), lo = archPoint(th), hi = archPoint(th).applyMatrix4(UPPER);
-    const nr = new THREE.Vector3().crossVectors(archTangent(th), UP).multiplyScalar(.18);
-    const ctrl = lo.clone().lerp(hi, .5).add(nr).add(new THREE.Vector3(0, 0, -.12));
+  /* ── Mejillas: cierran los lados para que la boca sea una sola pieza, como una copa ── */
+  const TH_CORNER = 1.2;                       // dónde están las comisuras (ángulo sobre la herradura)
+  const cheekMat = gumMat.clone(); cheekMat.side = THREE.DoubleSide;
+  const nrAt = th => new THREE.Vector3().crossVectors(archTangent(th), UP);
+  // comisura: un tubo grueso que une el labio de abajo con el de arriba
+  function buildCorner(side){
+    const th = side * TH_CORNER, n = nrAt(th);
+    const lo = archPoint(th).addScaledVector(n, .06), hi = archPoint(th).addScaledVector(n, .06).applyMatrix4(UPPER);
+    const ctrl = lo.clone().lerp(hi, .5).addScaledVector(n, .42).add(new THREE.Vector3(0, 0, .1));
     const curve = new THREE.QuadraticBezierCurve3(lo, ctrl, hi);
-    const N = 26, M = 22, pos = [], idx = [];
+    const N = 30, M = 24, pos = [], idx = [];
     const t = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), p = new THREE.Vector3();
     for (let i = 0; i < N; i++){
       const u = i / (N - 1); const c = curve.getPoint(u); curve.getTangent(u, t);
-      a.set(0, 0, 1).cross(t).normalize(); if (a.lengthSq() < .1) a.set(1, 0, 0); b.crossVectors(t, a).normalize();
-      const r = .36 - .15 * Math.sin(Math.PI * u);
-      for (let j = 0; j < M; j++){ const ph = 2 * Math.PI * j / M; p.copy(c).addScaledVector(a, Math.cos(ph) * r).addScaledVector(b, Math.sin(ph) * r * 1.1); pos.push(p.x, p.y, p.z); }
+      a.copy(n).addScaledVector(t, -n.dot(t)).normalize(); b.crossVectors(t, a).normalize();
+      const r = GUM_RX * (.98 - .1 * Math.sin(Math.PI * u));
+      for (let j = 0; j < M; j++){ const ph = 2 * Math.PI * j / M; p.copy(c).addScaledVector(a, Math.cos(ph) * r).addScaledVector(b, Math.sin(ph) * r); pos.push(p.x, p.y, p.z); }
     }
-    for (let i = 0; i < N - 1; i++) for (let j = 0; j < M; j++){ const q = i * M + j, r = i * M + (j + 1) % M, s = (i + 1) * M + j, d = (i + 1) * M + (j + 1) % M; idx.push(q, s, r, r, s, d); }
+    for (let i = 0; i < N - 1; i++) for (let j = 0; j < M; j++){ const q = i * M + j, r = i * M + (j + 1) % M, s2 = (i + 1) * M + j, d = (i + 1) * M + (j + 1) % M; idx.push(q, s2, r, r, s2, d); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
     const m = new THREE.Mesh(g, gumMat); world.add(m); return m;
   }
-  buildPillar(-1); buildPillar(1);
+  // pared de la mejilla: superficie abombada desde la comisura hasta el fondo
+  function buildCheek(side){
+    const N = 26, M = 20, pos = [], idx = [], th1 = TH - .03;
+    const lo = new THREE.Vector3(), hi = new THREE.Vector3(), mid = new THREE.Vector3(), p = new THREE.Vector3();
+    for (let i = 0; i < N; i++){
+      const u = i / (N - 1), th = side * (TH_CORNER + (th1 - TH_CORNER) * u), n = nrAt(th);
+      lo.copy(archPoint(th)).addScaledVector(n, GUM_RX * .55).addScaledVector(UP, GUM_RY * .55);
+      hi.copy(archPoint(th)).addScaledVector(n, GUM_RX * .55).addScaledVector(UP, -GUM_RY * .55).applyMatrix4(UPPER);
+      mid.copy(lo).lerp(hi, .5).addScaledVector(n, .42 * Math.sin(Math.PI * (.15 + .85 * u)) + .1);
+      for (let j = 0; j < M; j++){ const v = j / (M - 1), a = (1 - v) * (1 - v), b = 2 * v * (1 - v), c = v * v;
+        p.set(0, 0, 0).addScaledVector(lo, a).addScaledVector(mid, b).addScaledVector(hi, c); pos.push(p.x, p.y, p.z); }
+    }
+    for (let i = 0; i < N - 1; i++) for (let j = 0; j < M - 1; j++){ const q = i * M + j, r = q + 1, s2 = q + M, d = s2 + 1; if (side > 0) idx.push(q, s2, r, r, s2, d); else idx.push(q, r, s2, r, d, s2); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, cheekMat); world.add(m); return m;
+  }
+  buildCorner(-1); buildCorner(1); buildCheek(-1); buildCheek(1);
 
   // Paladar en domo, garganta oscura y campanilla
   const palate = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), palateMat);
-  palate.scale.set(1.5, .62, 1.22); palate.position.set(0, .05, -.22).applyMatrix4(UPPER); palate.quaternion.copy(UPPER_ROT); world.add(palate);
+  palate.scale.set(1.62, .78, 1.3); palate.position.set(0, .05, -.24).applyMatrix4(UPPER); palate.quaternion.copy(UPPER_ROT); world.add(palate);
   const throat = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), throatMat);
-  throat.scale.set(1.3, .95, .45); throat.position.set(0, 1.08, -.86); world.add(throat);
+  const MID_Y = 1.6;   // altura del centro de la abertura
+  throat.scale.set(1.55, 1.45, .55); throat.position.set(0, MID_Y, -1.05); world.add(throat);
   const deep = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), deepMat);
-  deep.scale.set(.62, .5, .2); deep.position.set(0, 1.08, -.48); world.add(deep);
-  const uvulaPivot = new THREE.Group(); uvulaPivot.position.set(0, 1.74, -.42); world.add(uvulaPivot);
-  const uvula = new THREE.Mesh(new THREE.CapsuleGeometry(.085, .2, 8, 16), palateMat); uvula.position.y = -.2; uvulaPivot.add(uvula);
+  deep.scale.set(.7, .78, .2); deep.position.set(0, MID_Y - .05, -.62); world.add(deep);
+  const uvulaPivot = new THREE.Group(); uvulaPivot.position.copy(new THREE.Vector3(0, -.12, -.9).applyMatrix4(UPPER)); world.add(uvulaPivot);
+  const uvula = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .26, 8, 16), palateMat); uvula.position.y = -.24; uvulaPivot.add(uvula);
   const uv = { a:0, v:0, b:0, bv:0 };
 
   // Lengua grande con su surco al centro
   const tongueGeo = new THREE.SphereGeometry(1, 64, 40);
   { const p = tongueGeo.attributes.position; for (let i = 0; i < p.count; i++){ let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
       if (y > 0) y -= .26 * Math.exp(-((x / .17) ** 2)) * y; if (z > .3) y += .08 * (z - .3); p.setXYZ(i, x, y, z); } tongueGeo.computeVertexNormals(); }
-  const TONGUE_C = new THREE.Vector3(0, .2, -.12), TONGUE_S = new THREE.Vector3(1.2, .42, 1.02);
+  const TONGUE_C = new THREE.Vector3(0, .28, -.1), TONGUE_S = new THREE.Vector3(1.22, .56, 1.08);
   const tongue = new THREE.Mesh(tongueGeo, tongueMat); tongue.position.copy(TONGUE_C); tongue.scale.copy(TONGUE_S); world.add(tongue);
 
   // Sombras de contacto
@@ -340,7 +362,7 @@ async function init(){
   /* ── Letras gigantes de la marca, pegadas a la pared del fondo ── */
   try { await Promise.race([document.fonts.load('900 200px Nunito'), new Promise(r => setTimeout(r, 2500))]); } catch(e){}
   // "Dulci  dent" con un hueco al centro: la boca ocupa ese hueco, como si se comiera el logo
-  const WM_W = 3200, WM_H = 640, WM_GAP = 700;
+  const WM_W = 3400, WM_H = 640, WM_GAP = 900;
   const wmCanvas = document.createElement('canvas'); wmCanvas.width = WM_W; wmCanvas.height = WM_H;
   { const x = wmCanvas.getContext('2d');
     x.font = "900 400px Nunito, 'Arial Rounded MT Bold', sans-serif"; x.textBaseline = 'middle';
@@ -635,6 +657,7 @@ async function init(){
     world.position.set(worldBaseX, intro.y + P.dy, 0);
     sun.target.position.set(worldBaseX, P.dy, 0); sun.position.copy(sun.target.position).add(SUN_OFF);
     mirror.position.set(worldBaseX, floorY, 0); floor.position.y = floorY + .001;
+    updateXray(S);
     world.rotation.set(pitch + P.rx, yaw + P.ry, 0);
     world.scale.set(S * (1 + squash.s * .5), S * (1 - squash.s), S * (1 + squash.s * .5));
     const shK = 1 / (1 + intro.y * .25); mouthShadow.scale.set(5.4 * shK, 4.2 * shK, 1); mouthShadow.material.opacity = shK;
@@ -857,9 +880,29 @@ async function init(){
 
     if (P.dy < 7) renderer.render(scene, camera);
   }
+  /* ── Rayos X (Cómo se hizo): un plano corta la boca; a un lado sólida, al otro malla de alambre ── */
+  renderer.localClippingEnabled = true;
+  const cutSolid = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 99), cutWire = new THREE.Plane(new THREE.Vector3(1, 0, 0), -99);
+  const wireMat = new THREE.MeshBasicMaterial({ color:'#EF4F60', wireframe:true, transparent:true, opacity:.55, depthWrite:false, clippingPlanes:[cutWire] });
+  const solidMats = new Set([strandMat, syrupMat, pickMat]), wireHosts = [];
+  world.traverse(o => { if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat){ solidMats.add(o.material); if (!o.isInstancedMesh) wireHosts.push(o); } });
+  const wires = wireHosts.map(o => { const w = new THREE.Mesh(o.geometry, wireMat); w.visible = false; w.renderOrder = 2; o.add(w); return w; });
+  for (const m of solidMats){ m.clippingPlanes = [cutSolid]; m.clipShadows = true; }
+  const camRight = new THREE.Vector3(), cutP = new THREE.Vector3();
+  let wiresOn = false;
+  function updateXray(S){
+    const xr = P.xray;
+    camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    // con xray en 0 el corte vive lejos a la derecha (todo sólido); al llegar a 1 barre hasta el centro
+    cutP.set(worldBaseX, P.dy + 1.6 * S, 0).addScaledVector(camRight, (1 - xr) * 7 - .05 * S);
+    cutSolid.setFromNormalAndCoplanarPoint(_v.copy(camRight).negate(), cutP);
+    cutWire.setFromNormalAndCoplanarPoint(camRight, cutP);
+    const on = xr > .02; if (on !== wiresOn){ wiresOn = on; for (const w of wires) w.visible = on; }
+  }
+
   // todo lo sólido proyecta sombra (menos las sombras falsas y el piso)
   for (const root of [world, pinchy, drill]) root.traverse(o => {
-    if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat && o.material !== deepMat) o.castShadow = true; });
+    if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat && o.material !== deepMat && o.material !== wireMat) o.castShadow = true; });
   refreshChart();
   requestAnimationFrame(t => { last = t; frame(t); });
 }

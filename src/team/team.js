@@ -18,7 +18,7 @@ function startTeam(){
   const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(3, 6, 5); scene.add(key);
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbfe3d2, .6));
   const camera = new THREE.PerspectiveCamera(26, 1, .1, 60);
-  camera.position.set(0, 1.6, 10); camera.lookAt(0, .82, 0);
+  camera.position.set(0, 2.1, 10); camera.lookAt(0, 1.35, 0);
 
   const gummy = (color, att) => new THREE.MeshPhysicalMaterial({ color, roughness:.22, clearcoat:1, clearcoatRoughness:.06,
     transmission:.15, thickness:.4, attenuationColor:new THREE.Color(att), attenuationDistance:.5 });
@@ -113,7 +113,7 @@ function startTeam(){
     renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
     const vh = 2 * 10 * Math.tan(THREE.MathUtils.degToRad(13)), vw = vh * camera.aspect;
     // dos a cada lado, con el hueco del centro libre para la boca (que vive en el lienzo de atrás)
-    const xs = [-.4, -.25, .25, .4]; scaleK = Math.min(1.05, vw * .13 / 2.1);
+    const xs = [-.36, -.21, .21, .36]; scaleK = Math.min(1.5, vw * .2 / 2.1);   // mismas x que las tarjetas (--x en el CSS)
     chars.forEach((c, i) => { c.root.position.x = xs[i] * vw; c.root.scale.setScalar(scaleK); });
   }
   new ResizeObserver(resize).observe(stage); resize();
