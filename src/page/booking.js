@@ -1,6 +1,7 @@
 /* Reserva: el diente se elige tocándolo en la boca 3D (el hero emite 'dulci:pick3d').
    El resto es un formulario de mentira que arma un ticket con los descuentos ganados jugando. */
 import { face } from './reviews.js';
+import { candyBurst } from '../core/candy.js';
 
 const $ = id => document.getElementById(id);
 const form = $('bookForm'), err = $('formErr'), ticket = $('ticket'), printer = $('printer'), picked = $('picked');
@@ -44,11 +45,6 @@ const paintBonus = () => {
 };
 window.addEventListener('dulci:premio', e => { bonus = e.detail; paintBonus(); });
 
-const fx = $('bookFx');
-const confetti = (x, y) => { const C = ['#F2705F', '#8F63E8', '#2FB892', '#F4C542', '#FF8FB1'];
-  for (let i = 0; i < 56; i++){ const c = document.createElement('i'); c.className = 'confetti'; const a = -Math.PI / 2 + (Math.random() - .5) * 2.4, d = 120 + Math.random() * 280;
-    c.style.cssText = `left:${x}px;top:${y}px;--c:${C[i % 5]};--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d + 300}px;--r:${(Math.random() - .5) * 900}deg;border-radius:${Math.random() < .5 ? '50%' : '4px'}`;
-    fx.appendChild(c); setTimeout(() => c.remove(), 1700); } };
 
 form.addEventListener('submit', e => {
   e.preventDefault();
@@ -65,10 +61,13 @@ form.addEventListener('submit', e => {
   $('tk-when').textContent = choice.when;
   paintBonus();
   $('tk-num').textContent = 'Ticket de cita #' + (1000 + Math.floor(Math.random() * 9000));
+  const br = form.querySelector('.submit').getBoundingClientRect();   // antes de ocultar el formulario
   printer.hidden = false; form.hidden = true;
   ticket.classList.remove('done'); ticket.style.animation = 'none'; void ticket.offsetWidth; ticket.style.animation = ''; ticket.classList.add('done');
-  const pr = ticket.getBoundingClientRect(), br = fx.getBoundingClientRect();
-  confetti(pr.left - br.left + pr.width - 70, pr.top - br.top + 40);
+  // ¡lluvia de gomitas! sale del botón y del ticket (coordenadas de pantalla: la capa #fx es fija)
+  const pr = printer.getBoundingClientRect();
+  candyBurst(br.left + br.width / 2, br.top + br.height / 2, 46);
+  setTimeout(() => candyBurst(pr.left + pr.width / 2, pr.top + 20, 34, .7), 350);
   form.querySelector('.submit').textContent = 'Agendado';
 });
 document.getElementById('againTicket').addEventListener('click', () => { printer.hidden = true; form.hidden = false; form.querySelector('.submit').textContent = 'Agenda tu cita'; });
