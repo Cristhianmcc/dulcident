@@ -24,22 +24,20 @@
 <canvas id="scene" aria-label="Boca de gomita interactiva: agarra un diente y jala"></canvas>
 <div class="fx" id="fx" aria-hidden="true"></div>
 
-<!-- Marco fijo con muesca de logo arriba y flecha abajo -->
-<div class="frame" aria-hidden="true"></div>
-<div class="notch top"><a class="logo" href="#inicio">D<span class="u">u</span>lcident</a></div>
-<nav class="nav">
-  <a href="#como">Cómo se hizo</a>
-  <button class="sound" id="soundBtn" type="button" aria-pressed="true" aria-label="Sonido">
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="w" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-  </button>
-</nav>
-<div class="notch bottom"><button class="next" id="nextBtn" type="button" aria-label="Siguiente sección">
-  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 12l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-</button></div>
-
 <main id="main">
 
 <section class="sec hero" id="inicio" data-pose="hero" aria-label="Inicio">
+  <!-- muesca con el logo, menú y flecha: solo en el hero, como en Gomident -->
+  <div class="notch top"><a class="logo" href="#inicio">D<span class="u">u</span>lcident</a></div>
+  <nav class="nav">
+    <a href="#como">Cómo se hizo</a>
+    <button class="sound" id="soundBtn" type="button" aria-pressed="true" aria-label="Sonido">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="w" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </nav>
+  <div class="notch bottom"><button class="next" id="nextBtn" type="button" aria-label="Siguiente sección">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 12l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button></div>
   <div class="copy">
     <h1><span>Arranca dientes.</span><span>Siéntete increíble.</span></h1>
     <p class="lede">Una clínica dental hecha de gomita. Cada diente sale de verdad y aquí nada duele.</p>
@@ -147,7 +145,7 @@
           <div class="step">
             <p class="step-t" id="lg-flavor"><span class="n">3</span>Elige tu sabor</p>
             <div class="chips" role="radiogroup" aria-labelledby="lg-flavor" data-name="flavor" data-style="coral">
-              <button type="button" class="opt on" data-v="Fresa"><i style="--d:#FFFDF9"></i>Fresa</button><button type="button" class="opt" data-v="Menta"><i style="--d:#2FB892"></i>Menta</button><button type="button" class="opt" data-v="Uva"><i style="--d:#8F63E8"></i>Uva</button>
+              <button type="button" class="opt on" data-v="Fresa"><i style="--d:#FF8FB1"></i>Fresa</button><button type="button" class="opt" data-v="Menta"><i style="--d:#2FB892"></i>Menta</button><button type="button" class="opt" data-v="Uva"><i style="--d:#8F63E8"></i>Uva</button>
             </div>
           </div>
           <div class="step">

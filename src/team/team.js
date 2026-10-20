@@ -113,7 +113,7 @@ function startTeam(){
     renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
     const vh = 2 * 10 * Math.tan(THREE.MathUtils.degToRad(13)), vw = vh * camera.aspect;
     // dos a cada lado, con el hueco del centro libre para la boca (que vive en el lienzo de atrás)
-    const xs = [-.36, -.21, .21, .36]; scaleK = Math.min(1.5, vw * .2 / 2.1);   // mismas x que las tarjetas (--x en el CSS)
+    const xs = [-.38, -.22, .22, .38]; scaleK = Math.min(1.5, vw * .2 / 2.1);   // mismas x que las tarjetas (--x en el CSS)
     chars.forEach((c, i) => { c.root.position.x = xs[i] * vw; c.root.scale.setScalar(scaleK); });
   }
   new ResizeObserver(resize).observe(stage); resize();

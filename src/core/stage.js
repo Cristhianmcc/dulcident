@@ -6,11 +6,11 @@
    xray: corte de rayos X (media boca en malla de alambre) */
 export const POSES = {
   // la boca siempre mira casi de frente: solo cambia de lugar y de tamaño
-  hero:    { x:.52, dy:-.4,  s:1,    rx:0,   ry:-.28, wm:1, play:1, book:0, xray:0 },
-  team:    { x:.5,  dy:.9,   s:.62,  rx:0,   ry:0,    wm:0, play:0, book:0, xray:0 },
-  reviews: { x:.74, dy:-1.2, s:1.75, rx:.04, ry:-.2,  wm:0, play:0, book:0, xray:0 },
-  how:     { x:.5,  dy:.16,  s:.75,  rx:0,   ry:0,    wm:0, play:0, book:0, xray:1 },
-  book:    { x:.28, dy:.08,  s:.74,  rx:0,   ry:0,    wm:0, play:0, book:1, xray:0 },
+  hero:    { x:.53, dy:-.35, s:1.1,  rx:0,   ry:-.2,  wm:1, play:1, book:0, xray:0 },
+  team:    { x:.5,  dy:.6,   s:.7,   rx:0,   ry:0,    wm:0, play:0, book:0, xray:0 },
+  reviews: { x:.7,  dy:-.1,  s:1.0,  rx:.04, ry:-.22, wm:0, play:0, book:0, xray:0 },
+  how:     { x:.5,  dy:.05,  s:.85,  rx:0,   ry:0,    wm:0, play:0, book:0, xray:1 },
+  book:    { x:.28, dy:-.1,  s:.85,  rx:0,   ry:0,    wm:0, play:0, book:1, xray:0 },
   away:    { x:.5,  dy:7.5,  s:.6,   rx:0,   ry:0,    wm:0, play:0, book:0, xray:0 },
 };
 const KEYS = Object.keys(POSES.hero);
