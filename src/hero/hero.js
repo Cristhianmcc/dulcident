@@ -172,14 +172,14 @@ async function init(){
   buildGum(0); buildGum(1);
 
   /* ── Mejillas: cierran los lados para que la boca sea una sola pieza, como una copa ── */
-  const TH_CORNER = 1.2;                       // dónde están las comisuras (ángulo sobre la herradura)
+  const TH_CORNER = 1.08;                       // dónde están las comisuras (ángulo sobre la herradura)
   const cheekMat = gumMat.clone(); cheekMat.side = THREE.DoubleSide;
   const nrAt = th => new THREE.Vector3().crossVectors(archTangent(th), UP);
   // comisura: un tubo grueso que une el labio de abajo con el de arriba
   function buildCorner(side){
     const th = side * TH_CORNER, n = nrAt(th);
     const lo = archPoint(th).addScaledVector(n, .06), hi = archPoint(th).addScaledVector(n, .06).applyMatrix4(UPPER);
-    const ctrl = lo.clone().lerp(hi, .5).addScaledVector(n, .42).add(new THREE.Vector3(0, 0, .1));
+    const ctrl = lo.clone().lerp(hi, .5).addScaledVector(n, .78).add(new THREE.Vector3(0, 0, .05));   // bien abombada: la abertura queda ovalada
     const curve = new THREE.QuadraticBezierCurve3(lo, ctrl, hi);
     const N = 30, M = 24, pos = [], idx = [];
     const t = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), p = new THREE.Vector3();
@@ -561,20 +561,23 @@ async function init(){
   }
 
   /* ── Hada de los dientes ── */
-  function fairy(){
-    Sound.unlock(); Sound.chime();
+  function fairy(silent = false){
+    if (!silent){ Sound.unlock(); Sound.chime(); }
     for (const t of teeth){ if (t.state !== 'anchored'){ if (grabbed === t) up(); t.state = 'returning'; t.ret = 0; t.from = t.pos.clone(); t.fromQ = t.q.clone(); } t.loose = 0; }
     for (const d of drops) d.alive = false;
     for (const s of strands){ world.remove(s.a, s.b); s.a.geometry.dispose(); s.b.geometry.dispose(); } strands.length = 0;
+    if (silent) return;
     const p = toCard(new THREE.Vector3(0, 1.2, .6)); sparkle(p.x, p.y, 26, ['#F4C542', '#FFFDF9', '#8F63E8', '#FF8FB1'], 200);
     say('Todo como nuevo.', '#8F63E8');
   }
-  $('#fairyBtn').addEventListener('click', fairy);
-  $('#soundBtn').addEventListener('click', e => { Sound.unlock(); const m = !Sound.muted; Sound.setMuted(m); e.currentTarget.setAttribute('aria-pressed', String(!m)); e.currentTarget.querySelector('b').textContent = m ? 'no' : 'sí'; });
+  $('#fairyBtn').addEventListener('click', () => fairy());
+  $('#soundBtn').addEventListener('click', e => { Sound.unlock(); const m = !Sound.muted; Sound.setMuted(m); e.currentTarget.setAttribute('aria-pressed', String(!m)); });
 
   /* ── Reserva: elegir el diente tocándolo en la boca ── */
   const pickMat = toothMat.clone(); pickMat.color.set('#FF9A8C'); pickMat.attenuationColor = new THREE.Color('#E0402E');
   let chosen3d = null;
+  // el diente elegido toma el color del sabor
+  window.addEventListener('dulci:sabor', e => { pickMat.color.set(e.detail.color).lerp(new THREE.Color('#FFFFFF'), .3); pickMat.attenuationColor.set(e.detail.color); });
   function chooseTooth(t){
     Sound.unlock();
     if (chosen3d) chosen3d.mesh.material = toothMat;
@@ -632,7 +635,7 @@ async function init(){
   let toolMix = 0, drillScale = 0, pinchyScale = 0;
   const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _m = new THREE.Vector3(), _qq = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
   const fwdPlane = new THREE.Plane();
-  let last = performance.now(), dustT = 0, time = 0, heroVisible = true;
+  let last = performance.now(), dustT = 0, time = 0, heroVisible = true, awayT = 0;
   // fuera de vista, la boca se pausa para no gastar
   // la boca nunca se pausa por scroll (viaja con la página); solo deja de dibujarse tapada por el final
 
@@ -647,6 +650,9 @@ async function init(){
     targetPose(TP); { const k = Math.min(1, dt * 6); for (const key in P) P[key] += (TP[key] - P[key]) * k; }
     worldBaseX = screenX(P.x);
     if (!playing() && (grabbed || drilling || orbit)) up();
+    // fuera del hero los dientes sueltos vuelven solos a su lugar (sin sonido)
+    awayT = playing() ? 0 : awayT + dt;
+    if (awayT > .5 && teeth.some(t => t.state === 'free' || t.state === 'held')) fairy(true);
     wmRise = Math.min(1, wmRise + dt * 1.6); placeWordmark();
     squash.v += (-170 * squash.s - 9 * squash.v) * dt; squash.s += squash.v * dt; squash.s = THREE.MathUtils.clamp(squash.s, -.25, .25);
 
@@ -880,29 +886,47 @@ async function init(){
 
     if (P.dy < 7) renderer.render(scene, camera);
   }
-  /* ── Rayos X (Cómo se hizo): un plano corta la boca; a un lado sólida, al otro malla de alambre ── */
+  /* ── Rayos X (Cómo se hizo): un plano corta la boca. De un lado queda sólida;
+     del otro, una red de tetraedros (puntos de una rejilla unidos con sus vecinos y diagonales). ── */
   renderer.localClippingEnabled = true;
   const cutSolid = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 99), cutWire = new THREE.Plane(new THREE.Vector3(1, 0, 0), -99);
-  const wireMat = new THREE.MeshBasicMaterial({ color:'#EF4F60', wireframe:true, transparent:true, opacity:.55, depthWrite:false, clippingPlanes:[cutWire] });
-  const solidMats = new Set([strandMat, syrupMat, pickMat]), wireHosts = [];
-  world.traverse(o => { if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat){ solidMats.add(o.material); if (!o.isInstancedMesh) wireHosts.push(o); } });
-  const wires = wireHosts.map(o => { const w = new THREE.Mesh(o.geometry, wireMat); w.visible = false; w.renderOrder = 2; o.add(w); return w; });
+  const solidMats = new Set([strandMat, syrupMat, pickMat]), shellMeshes = [];
+  world.traverse(o => { if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat){ solidMats.add(o.material);
+    if (!o.isInstancedMesh && o.material !== deepMat && o.material !== throatMat && o.material !== holeMat) shellMeshes.push(o); } });
   for (const m of solidMats){ m.clippingPlanes = [cutSolid]; m.clipShadows = true; }
+  const lattice = (() => {
+    world.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(world.matrixWorld).invert(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+    const H = .2, cells = new Set(), key = (i, j, k) => i + ',' + j + ',' + k;
+    // 1) marcar las celdas de la rejilla que tocan la superficie de la boca
+    for (const o of shellMeshes){
+      if (o.userData.tooth && o.parent !== world) continue;
+      m.multiplyMatrices(inv, o.matrixWorld); const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i += 2){ v.fromBufferAttribute(p, i).applyMatrix4(m); cells.add(key(Math.round(v.x / H), Math.round(v.y / H), Math.round(v.z / H))); }
+    }
+    // 2) unir cada celda con sus vecinas: aristas de cubo + diagonales = tetraedros
+    const N = [[1,0,0],[0,1,0],[0,0,1],[1,1,0],[0,1,1],[1,0,1],[1,1,1]], pos = [];
+    for (const c of cells){ const [i, j, k] = c.split(',').map(Number);
+      for (const [a, b, d] of N) if (cells.has(key(i + a, j + b, k + d))) pos.push(i * H, j * H, k * H, (i + a) * H, (j + b) * H, (k + d) * H); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const mat = new THREE.LineBasicMaterial({ color:'#F0606E', transparent:true, opacity:.42, depthWrite:false, clippingPlanes:[cutWire] });
+    const l = new THREE.LineSegments(g, mat); l.visible = false; l.renderOrder = 3; world.add(l); return l;
+  })();
   const camRight = new THREE.Vector3(), cutP = new THREE.Vector3();
-  let wiresOn = false;
   function updateXray(S){
     const xr = P.xray;
     camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
-    // con xray en 0 el corte vive lejos a la derecha (todo sólido); al llegar a 1 barre hasta el centro
-    cutP.set(worldBaseX, P.dy + 1.6 * S, 0).addScaledVector(camRight, (1 - xr) * 7 - .05 * S);
+    // con xray en 0 el corte vive lejos a la derecha (todo sólido); en 1 entra y barre despacio de ida y vuelta
+    const sweep = xr * (.15 + .55 * (.5 + .5 * Math.sin(time * .7))) * 1.9 * S;
+    cutP.set(worldBaseX, P.dy + 1.6 * S, 0).addScaledVector(camRight, (1 - xr) * 7 + sweep - .9 * S * xr);
     cutSolid.setFromNormalAndCoplanarPoint(_v.copy(camRight).negate(), cutP);
     cutWire.setFromNormalAndCoplanarPoint(camRight, cutP);
-    const on = xr > .02; if (on !== wiresOn){ wiresOn = on; for (const w of wires) w.visible = on; }
+    lattice.visible = xr > .02; lattice.material.opacity = .42 * Math.min(1, xr * 1.5);
   }
 
   // todo lo sólido proyecta sombra (menos las sombras falsas y el piso)
   for (const root of [world, pinchy, drill]) root.traverse(o => {
-    if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat && o.material !== deepMat && o.material !== wireMat) o.castShadow = true; });
+    if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat && o.material !== deepMat) o.castShadow = true; });
   refreshChart();
   requestAnimationFrame(t => { last = t; frame(t); });
 }

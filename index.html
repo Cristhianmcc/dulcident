@@ -132,42 +132,53 @@
     <h2 id="t-reserva">Tu turno en el sillón.</h2>
     <p>Formulario falso, dentista falso, rebote de verdad. Nada de lo que escribas sale de aquí.</p>
   </div>
-  <div class="book">
-    <div class="pick-hint glass"><span class="n">1</span><div><b>¿Cuál diente te da lata?</b><p class="picked" id="picked">Tócalo en la boca</p></div></div>
-    <form class="form glass" id="bookForm" novalidate>
-      <div class="step"><span class="n">2</span><div class="grow">
-        <label class="legend" for="f-pain">¿Cuánto te duele?</label>
-        <div class="pain"><span class="pface" id="painFace"></span><input id="f-pain" type="range" min="1" max="10" value="4"><output id="painOut" for="f-pain">4</output></div>
-      </div></div>
-      <div class="step"><span class="n">3</span><div class="grow">
-        <p class="legend" id="lg-flavor">Elige tu sabor</p>
-        <div class="chips" role="radiogroup" aria-labelledby="lg-flavor" data-name="flavor">
-          <button type="button" class="opt on" data-v="Fresa">Fresa</button><button type="button" class="opt" data-v="Menta">Menta</button><button type="button" class="opt" data-v="Uva">Uva</button><button type="button" class="opt" data-v="Limón">Limón</button>
+  <div class="book-card">
+    <div class="hole" aria-label="Boca 3D: toca un diente para elegirlo">
+      <p class="step-t"><span class="n">1</span>¿Cuál diente te da lata?</p>
+      <p class="picked" id="picked">Toca un diente. El que sea.</p>
+    </div>
+    <div class="book-right">
+      <form class="form" id="bookForm" novalidate>
+        <div class="step">
+          <p class="step-t"><span class="n">2</span><label for="f-pain">¿Cuánto te duele?</label></p>
+          <div class="pain"><span class="pface" id="painFace"></span><input id="f-pain" type="range" min="1" max="10" value="4"><div class="pval"><output id="painOut" for="f-pain">4</output><small id="painWord">Se nota</small></div></div>
         </div>
-      </div></div>
-      <div class="step"><span class="n">4</span><div class="grow">
-        <p class="legend" id="lg-when">¿Cuándo?</p>
-        <div class="chips" role="radiogroup" aria-labelledby="lg-when" data-name="when">
-          <button type="button" class="opt on" data-v="Hoy">Hoy</button><button type="button" class="opt" data-v="Mañana">Mañana</button><button type="button" class="opt" data-v="Esta semana">Esta semana</button><button type="button" class="opt" data-v="Cuando se caiga solo">Cuando se caiga solo</button>
+        <div class="row2">
+          <div class="step">
+            <p class="step-t" id="lg-flavor"><span class="n">3</span>Elige tu sabor</p>
+            <div class="chips" role="radiogroup" aria-labelledby="lg-flavor" data-name="flavor" data-style="coral">
+              <button type="button" class="opt on" data-v="Fresa"><i style="--d:#FFFDF9"></i>Fresa</button><button type="button" class="opt" data-v="Menta"><i style="--d:#2FB892"></i>Menta</button><button type="button" class="opt" data-v="Uva"><i style="--d:#8F63E8"></i>Uva</button>
+            </div>
+          </div>
+          <div class="step">
+            <p class="step-t" id="lg-when"><span class="n">4</span>¿Cuándo?</p>
+            <div class="chips" role="radiogroup" aria-labelledby="lg-when" data-name="when">
+              <button type="button" class="opt on" data-v="¡Ya!">¡Ya!</button><button type="button" class="opt" data-v="Después del postre">Después del postre</button><button type="button" class="opt" data-v="Mañana, más o menos">Mañana, más o menos</button><button type="button" class="opt" data-v="Nunca (esperamos)">Nunca (esperamos)</button>
+            </div>
+          </div>
         </div>
-      </div></div>
-      <div class="row-end">
-        <div class="field"><label for="f-name">Tu nombre</label><input id="f-name" name="name" autocomplete="name" placeholder="Ana Muelas"></div>
-        <button class="btn primary submit" type="submit">Agenda tu cita</button>
+        <div class="row-end">
+          <div class="field"><label for="f-name">¿Cómo te llama el Dr. Drill?</label><input id="f-name" name="name" autocomplete="name" placeholder="Capitán Molar"></div>
+          <button class="btn primary submit" type="submit">Agenda tu cita</button>
+        </div>
+        <p class="err" id="formErr" role="alert"></p>
+      </form>
+      <div class="printer" id="printer" hidden>
+      <div class="ticket" id="ticket" aria-live="polite">
+        <div class="tk-brand"><b>D<span style="color:var(--coral)">u</span>lcident</b><span id="tk-num">Ticket de cita</span></div>
+        <span class="stamp">¡Agendado!</span>
+        <h3>Tu ticket</h3>
+        <dl>
+          <dt>Paciente</dt><dd id="tk-name"></dd>
+          <dt>Diente</dt><dd id="tk-tooth"></dd>
+          <dt>Dolor</dt><dd id="tk-pain"></dd>
+          <dt>Sabor</dt><dd id="tk-flavor"></dd>
+          <dt>Cuándo</dt><dd id="tk-when"></dd>
+          <dt>Bonus</dt><dd class="bonus" id="tk-bonus">Juega arriba para ganar descuentos</dd>
+        </dl>
+        <button class="chip" type="button" id="againTicket">Agendar otra</button>
       </div>
-      <p class="err" id="formErr" role="alert"></p>
-    </form>
-    <div class="ticket" id="ticket" aria-live="polite" hidden>
-      <span class="stamp">¡Reservado!</span>
-      <h3>Tu ticket</h3>
-      <dl>
-        <dt>Paciente</dt><dd id="tk-name"></dd>
-        <dt>Diente</dt><dd id="tk-tooth"></dd>
-        <dt>Dolor</dt><dd id="tk-pain"></dd>
-        <dt>Sabor</dt><dd id="tk-flavor"></dd>
-        <dt>Cuándo</dt><dd id="tk-when"></dd>
-        <dt>Bonus</dt><dd class="bonus" id="tk-bonus">Juega arriba para ganar descuentos</dd>
-      </dl>
+      </div>
     </div>
   </div>
 </section>

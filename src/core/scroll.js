@@ -42,4 +42,4 @@ document.addEventListener('click', e => {
 
 // aparición suave de los bloques al entrar en pantalla
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold:.15 });
-document.querySelectorAll('.sec-head, .member, .how article, .learn, .form, .pick-hint, .rv-left, .cta > *').forEach(el => { el.classList.add('reveal'); io.observe(el); });
+document.querySelectorAll('.sec-head, .member, .how article, .learn, .book-card, .rv-left, .cta > :not(.candy)').forEach(el => { el.classList.add('reveal'); io.observe(el); });

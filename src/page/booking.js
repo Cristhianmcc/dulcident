@@ -3,7 +3,9 @@
 import { face } from './reviews.js';
 
 const $ = id => document.getElementById(id);
-const form = $('bookForm'), err = $('formErr'), ticket = $('ticket'), picked = $('picked');
+const form = $('bookForm'), err = $('formErr'), ticket = $('ticket'), printer = $('printer'), picked = $('picked');
+const card = form.closest('.book-card');
+const ACCENT = { Fresa:'#E8465C', Menta:'#2FB892', Uva:'#8F63E8' };
 let tooth = null;
 
 window.addEventListener('dulci:pick3d', e => {
@@ -27,7 +29,9 @@ const choice = {};
 form.querySelectorAll('.chips').forEach(group => {
   const name = group.dataset.name, opts = [...group.querySelectorAll('.opt')];
   opts.forEach(o => o.setAttribute('role', 'radio'));
-  const set = o => { opts.forEach(x => { x.classList.toggle('on', x === o); x.setAttribute('aria-checked', String(x === o)); }); choice[name] = o.dataset.v; };
+  const set = o => { opts.forEach(x => { x.classList.toggle('on', x === o); x.setAttribute('aria-checked', String(x === o)); }); choice[name] = o.dataset.v;
+    // el sabor tiñe toda la tarjeta: números, slider y botón
+    if (name === 'flavor'){ card.style.setProperty('--accent', ACCENT[o.dataset.v]); window.dispatchEvent(new CustomEvent('dulci:sabor', { detail:{ color:ACCENT[o.dataset.v] } })); } };
   set(opts.find(o => o.classList.contains('on')) || opts[0]);
   opts.forEach(o => o.addEventListener('click', () => set(o)));
 });
@@ -60,11 +64,12 @@ form.addEventListener('submit', e => {
   $('tk-flavor').textContent = choice.flavor;
   $('tk-when').textContent = choice.when;
   paintBonus();
-  ticket.hidden = false; form.hidden = true;
-  ticket.classList.remove('done'); void ticket.offsetWidth; ticket.classList.add('done');
+  $('tk-num').textContent = 'Ticket de cita #' + (1000 + Math.floor(Math.random() * 9000));
+  printer.hidden = false; form.hidden = true;
+  ticket.classList.remove('done'); ticket.style.animation = 'none'; void ticket.offsetWidth; ticket.style.animation = ''; ticket.classList.add('done');
   const pr = ticket.getBoundingClientRect(), br = fx.getBoundingClientRect();
   confetti(pr.left - br.left + pr.width - 70, pr.top - br.top + 40);
   form.querySelector('.submit').textContent = 'Agendado';
 });
-document.getElementById('againTicket').addEventListener('click', () => { ticket.hidden = true; form.hidden = false; form.querySelector('.submit').textContent = 'Agenda tu cita'; });
+document.getElementById('againTicket').addEventListener('click', () => { printer.hidden = true; form.hidden = false; form.querySelector('.submit').textContent = 'Agenda tu cita'; });
 form.addEventListener('input', () => { err.textContent = ''; form.querySelector('.submit').textContent = 'Agenda tu cita'; });
