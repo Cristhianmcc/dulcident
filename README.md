@@ -11,35 +11,44 @@ Landing de práctica de una clínica dental de gomita ficticia, inspirada en el 
 
 ## Cómo verlo
 
-Opción rápida: abre `index.html` con Chrome (doble clic).
+La forma más fácil: abre el enlace privado de Dulcident que te pasó Claude.
 
-Opción recomendada, con un servidor local (evita problemas de caché y se parece más a producción):
+En tu PC necesitas un servidor local (los módulos no abren con doble clic). Con Node.js instalado, en esta carpeta:
 
 ```
 npx serve .
 ```
 
-Luego abre la dirección que aparece (normalmente http://localhost:3000). Necesitas Node.js instalado.
+O, para trabajar con recarga instantánea:
 
-La página necesita internet: carga Three.js desde jsDelivr y las fuentes Nunito y Lilita One desde Google Fonts.
+```
+npm install
+npm run dev
+```
+
+La página necesita internet para las fuentes de Google y, en modo sin build, para Three.js desde jsDelivr.
 
 ## Seguir trabajando con Claude Code
 
 Abre una terminal en esta carpeta y escribe `claude`. El archivo `CLAUDE.md` le explica el proyecto y las reglas.
 
-## Dónde está cada cosa en `index.html`
+## Dónde está cada cosa
 
-| Parte | Dónde buscar |
+| Parte | Archivo |
 | --- | --- |
-| Colores y tipografías | Bloque `:root` al inicio del `<style>` |
-| Textos del hero y secciones | HTML después del `<style>` |
-| Reseñas, selector de diente, formulario, footer | Primer `<script>` (normal) |
-| Boca 3D, física, sonido, pinzas y taladro | Primer `<script type="module">` |
-| Equipo 3D | Segundo `<script type="module">` |
+| Estructura y textos | `index.html` |
+| Colores, tipografías y estilos | `src/styles.css` (bloque `:root` al inicio) |
+| Orden de arranque | `src/main.js` |
+| Sonido sintetizado | `src/core/sound.js` |
+| Boca 3D, física, pinzas y taladro | `src/hero/hero.js` |
+| Equipo 3D | `src/team/team.js` |
+| Reseñas | `src/page/reviews.js` |
+| Selector de diente, formulario y ticket | `src/page/booking.js` |
+| Letras de gomita del footer | `src/page/footer.js` |
 
 ## Números para afinar el juego
 
-En el módulo de la boca:
+En `src/hero/hero.js`:
 
 - `const T = .62 - .4 * t.loose;`: qué tanto hay que jalar un diente para que salga.
 - `t.loose + Math.min(latSpeed, 3) * h * .26`: qué tan rápido se afloja al menearlo.

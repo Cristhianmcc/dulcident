@@ -15,11 +15,13 @@ Landing de práctica de una clínica dental de gomita ficticia. Sirve para apren
 - Modo ágil: ciclos cortos de construir, verlo en Chrome y corregir. Sin planes largos ni pruebas formales; es una demo.
 - Primero la imagen, después el código: para un diseño nuevo, generar una referencia (por ejemplo en Gemini) y construir comparando contra ella.
 - Probar ideas en ramas aparte y soltarlas rápido si no convencen.
-- Solo escritorio y Chrome. En pantallas chicas el hero muestra un aviso; el resto de la página sí funciona.
+- Hoy: escritorio y Chrome. La fase 9 suma celular, calidad adaptativa y "reducir movimiento".
 
 ## Técnica actual
 
-- Un solo archivo `index.html`. Three.js 0.169 desde jsDelivr con importmap. Sin build.
+- Módulos ES en `src/`. Funciona de dos formas: sin build (importmap a jsDelivr en `index.html`) o con Vite (`npm run dev`), que usa `node_modules`. Toda librería nueva va en las dos partes: `package.json` y el importmap.
+- Se publica como enlace privado (artifact de Claude) subiendo `index.html` y `src/`.
+- Plan por fases: 1 módulos, 2 scroll, 3 shaders y postpro, 4 física, 5 partículas, 6 tipografía, 7 entradas, 8 Supabase, 9 celular.
 - Hero: la boca se arma con código (herradura matemática, dientes como esferas deformadas por tipo). La encía es una cadena de resortes. Los dientes sueltos tienen gravedad, rebote y choques simples. Pinchy y Dr. Drill son el cursor.
 - Material de gomita: `MeshPhysicalMaterial` con transmisión, grosor y barniz, más `RoomEnvironment` para los reflejos.
 - Sonido: Web Audio sintetizado en vivo; la encía cruje según la tensión del jalón.
