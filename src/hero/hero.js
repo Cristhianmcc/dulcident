@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Sound } from '../core/sound.js';
+import { makeSoftMirror } from './mirror.js';
 
 const $ = s => document.querySelector(s);
 const card = $('#card'), canvas = $('#scene'), fx = $('#fx');
@@ -22,6 +23,9 @@ async function init(){
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // sombras suaves de verdad (VSM): la boca proyecta su sombra sobre el piso
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.VSMShadowMap;
 
   const CARD = '#E3F1EA';
   const scene = new THREE.Scene();
@@ -38,18 +42,29 @@ async function init(){
   const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(4, 7, 5); scene.add(key);
   const rim = new THREE.DirectionalLight(0xffe8ee, .8); rim.position.set(-5, 3, -4); scene.add(rim);
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbfe3d2, .55));
+  // luz cenital que solo existe para la sombra: cae casi recta, como en un estudio
+  const sun = new THREE.DirectionalLight(0xffffff, .45);
+  const SUN_OFF = new THREE.Vector3(6.5, 8, 2.2);   // de la derecha: sombra larga hacia la izquierda
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left:-6.5, right:6.5, top:6.5, bottom:-6.5, near:1, far:26 });
+  sun.shadow.radius = 22; sun.shadow.blurSamples = 25; sun.shadow.bias = -.0004;
+  scene.add(sun, sun.target);
 
   const world = new THREE.Group(); scene.add(world);
 
   /* ── Materiales de gomita ── */
-  const gumMat = new THREE.MeshPhysicalMaterial({ color:'#F27C83', roughness:.26, clearcoat:1, clearcoatRoughness:.08,
-    transmission:.18, thickness:.9, attenuationColor:new THREE.Color('#B0102E'), attenuationDistance:.6, ior:1.4,
+  // gomita translúcida: mucha transmisión + atenuación roja = la luz entra, se tiñe y sale
+  const gumMat = new THREE.MeshPhysicalMaterial({ color:'#FF8C93', roughness:.18, clearcoat:1, clearcoatRoughness:.05,
+    transmission:.62, thickness:1.3, attenuationColor:new THREE.Color('#C8102E'), attenuationDistance:.42, ior:1.42,
     sheen:.6, sheenColor:new THREE.Color('#FFD3DA'), sheenRoughness:.4 });
   const toothMat = new THREE.MeshPhysicalMaterial({ color:'#FFF7EA', roughness:.15, clearcoat:1, clearcoatRoughness:.04,
-    transmission:.22, thickness:.5, attenuationColor:new THREE.Color('#F0D3A2'), attenuationDistance:.9, ior:1.5 });
-  const tongueMat = new THREE.MeshPhysicalMaterial({ color:'#FF8FA4', roughness:.36, clearcoat:.8, clearcoatRoughness:.18,
+    transmission:.42, thickness:.55, attenuationColor:new THREE.Color('#EFCB92'), attenuationDistance:.7, ior:1.5 });
+  const tongueMat = new THREE.MeshPhysicalMaterial({ color:'#FF9AAE', roughness:.26, clearcoat:.9, clearcoatRoughness:.12,
+    transmission:.45, thickness:1.1, attenuationColor:new THREE.Color('#D8204A'), attenuationDistance:.5, ior:1.4,
     sheen:.7, sheenColor:new THREE.Color('#FFE0E6'), sheenRoughness:.5 });
-  const palateMat = new THREE.MeshPhysicalMaterial({ color:'#EC6575', roughness:.3, clearcoat:.9, clearcoatRoughness:.12, side:THREE.DoubleSide });
+  const palateMat = new THREE.MeshPhysicalMaterial({ color:'#F27583', roughness:.22, clearcoat:.9, clearcoatRoughness:.1, side:THREE.DoubleSide,
+    transmission:.35, thickness:.9, attenuationColor:new THREE.Color('#B80F2E'), attenuationDistance:.5, ior:1.4 });
   const throatMat = new THREE.MeshStandardMaterial({ color:'#5A1222', roughness:.55 });
   const deepMat = new THREE.MeshBasicMaterial({ color:'#1E0509' });
   const holeMat = new THREE.MeshPhysicalMaterial({ color:'#8E1427', roughness:.2, clearcoat:1 });
@@ -199,6 +214,13 @@ async function init(){
   const FLOOR = -.37;
   const mouthShadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map:shadowTex, transparent:true, depthWrite:false, toneMapped:false }));
   mouthShadow.rotation.x = -Math.PI / 2; mouthShadow.position.set(0, FLOOR + .002, .1); mouthShadow.scale.set(5.4, 4.2, 1); mouthShadow.renderOrder = -1; world.add(mouthShadow);
+  mouthShadow.material.opacity = .6;
+  // piso invisible que solo recibe sombra (fijo en la escena: la sombra crece cuando la boca cae)
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ color:'#2A5C4E', opacity:.2 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR + .001; floor.receiveShadow = true; scene.add(floor);
+  // piso espejo: un reflejo borroso y tenue que se apaga lejos de la boca (shader propio en mirror.js)
+  const mirror = makeSoftMirror(renderer, { size:16, radius:3.4, opacity:.32 });
+  mirror.position.y = FLOOR; scene.add(mirror);
   const smallShadowMat = new THREE.MeshBasicMaterial({ map:shadowTex, transparent:true, depthWrite:false, toneMapped:false, opacity:.9 });
   const smallShadowGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 
@@ -250,7 +272,7 @@ async function init(){
     const g = new THREE.BufferGeometry(); const n = rings * seg;
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     const idx = []; for (let i = 0; i < rings - 1; i++) for (let j = 0; j < seg; j++){ const a = i * seg + j, b = i * seg + (j + 1) % seg, c = (i + 1) * seg + j, d = (i + 1) * seg + (j + 1) % seg; idx.push(a, c, b, b, c, d); }
-    g.setIndex(idx); const m = new THREE.Mesh(g, strandMat); m.frustumCulled = false; world.add(m); return m;
+    g.setIndex(idx); const m = new THREE.Mesh(g, strandMat); m.frustumCulled = false; m.castShadow = true; world.add(m); return m;
   }
   const _t = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _p = new THREE.Vector3();
   function writeTube(mesh, pts, radii){
@@ -560,6 +582,8 @@ async function init(){
     yaw += (yawT - yaw) * Math.min(1, dt * 8); pitch += (pitchT - pitch) * Math.min(1, dt * 8);
     const yawVel = (yawT - yaw) * 8;
     world.position.set(worldBaseX, intro.y, 0);
+    sun.target.position.set(worldBaseX, 0, 0); sun.position.copy(sun.target.position).add(SUN_OFF);
+    mirror.position.x = worldBaseX;
     world.rotation.set(pitch, yaw, 0);
     world.scale.set(1 + squash.s * .5, 1 - squash.s, 1 + squash.s * .5);
     const shK = 1 / (1 + intro.y * .25); mouthShadow.scale.set(5.4 * shK, 4.2 * shK, 1); mouthShadow.material.opacity = shK;
@@ -780,6 +804,9 @@ async function init(){
 
     renderer.render(scene, camera);
   }
+  // todo lo sólido proyecta sombra (menos las sombras falsas y el piso)
+  for (const root of [world, pinchy, drill]) root.traverse(o => {
+    if (o.isMesh && o !== mouthShadow && o.material !== smallShadowMat && o.material !== deepMat) o.castShadow = true; });
   refreshChart();
   requestAnimationFrame(t => { last = t; frame(t); });
 }
