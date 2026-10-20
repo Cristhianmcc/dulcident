@@ -112,8 +112,9 @@ function startTeam(){
     W = stage.clientWidth; H = stage.clientHeight; if (!W || !H) return;
     renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
     const vh = 2 * 10 * Math.tan(THREE.MathUtils.degToRad(13)), vw = vh * camera.aspect;
-    const spacing = Math.min(2.5, vw / 4.2); scaleK = Math.min(1, spacing / 2.1);
-    chars.forEach((c, i) => { c.root.position.x = spacing * (i - 1.5); c.root.scale.setScalar(scaleK); });
+    // dos a cada lado, con el hueco del centro libre para la boca (que vive en el lienzo de atrás)
+    const xs = [-.4, -.25, .25, .4]; scaleK = Math.min(1.05, vw * .13 / 2.1);
+    chars.forEach((c, i) => { c.root.position.x = xs[i] * vw; c.root.scale.setScalar(scaleK); });
   }
   new ResizeObserver(resize).observe(stage); resize();
 

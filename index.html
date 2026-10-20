@@ -9,156 +9,185 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
 <link rel="stylesheet" href="src/styles.css">
-<!-- Sin build: el navegador resuelve 'three' desde jsDelivr. Con Vite (npm run dev) se usa node_modules. -->
+<!-- Sin build: el navegador resuelve las librerías desde jsDelivr. Con Vite (npm run dev) se usa node_modules. -->
 <script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "lenis":"https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.mjs"
+}}
 </script>
 </head>
 <body>
 
-<div class="card" id="card">
-  <canvas id="scene" aria-label="Boca de gomita interactiva: agarra un diente y jala"></canvas>
-  <div class="fx" id="fx" aria-hidden="true"></div>
-  <div class="ui" id="ui">
-    <div class="notch"><span class="logo">D<span class="u">u</span>lcident</span></div>
-    <button class="sound" id="soundBtn" type="button" aria-pressed="true">Sonido <b>sí</b></button>
-    <section class="copy">
-      <p class="eyebrow">Clínica dental de gomita · marca ficticia</p>
-      <h1><span>Arranca dientes.</span><span>Siéntete increíble.</span></h1>
-      <p class="lede">Una boca de gomita que cruje, se estira y hace pop. Agarra un diente con las pinzas, menéalo y jala.</p>
-      <div class="actions">
-        <button class="btn primary" id="demoBtn" type="button">Arrancar un diente</button>
-        <button class="btn ghost" id="fairyBtn" type="button">Hada de los dientes <span class="coins" id="coins">0</span></button>
-      </div>
-    </section>
-    <div class="chart" aria-live="polite">
-      <span class="pill"><b id="cariesN">3</b> caries</span>
-      <span class="pill"><b id="pulledN">0</b>/10 arrancados</span>
-      <span class="pill" id="offPill"><b id="offN">0%</b> de descuento</span>
-    </div>
-    <p class="hint">Agarra un diente y jala · taladra las manchas oscuras · arrastra el fondo para girar</p>
-    <div class="phrases" id="phrases" aria-live="polite"></div>
+<!-- Escenario fijo: una sola boca 3D vive detrás de toda la página y viaja entre secciones -->
+<canvas id="scene" aria-label="Boca de gomita interactiva: agarra un diente y jala"></canvas>
+<div class="fx" id="fx" aria-hidden="true"></div>
+
+<!-- Marco fijo con muesca de logo arriba y flecha abajo -->
+<div class="frame" aria-hidden="true"></div>
+<div class="notch top"><a class="logo" href="#inicio">D<span class="u">u</span>lcident</a></div>
+<nav class="nav">
+  <a href="#como">Cómo se hizo</a>
+  <button class="sound" id="soundBtn" type="button" aria-pressed="true" aria-label="Sonido">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="w" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+</nav>
+<div class="notch bottom"><button class="next" id="nextBtn" type="button" aria-label="Siguiente sección">
+  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 12l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button></div>
+
+<main id="main">
+
+<section class="sec hero" id="inicio" data-pose="hero" aria-label="Inicio">
+  <div class="copy">
+    <h1><span>Arranca dientes.</span><span>Siéntete increíble.</span></h1>
+    <p class="lede">Una clínica dental hecha de gomita. Cada diente sale de verdad y aquí nada duele.</p>
+    <div class="actions"><button class="btn primary" id="demoBtn" type="button">Arrancar un diente</button></div>
   </div>
+  <div class="chart" aria-live="polite">
+    <span class="pill"><b id="cariesN">3</b> caries</span>
+    <span class="pill"><b id="pulledN">0</b>/10 arrancados</span>
+    <span class="pill" id="offPill"><b id="offN">0%</b> desc.</span>
+  </div>
+  <p class="hint">Taladra las caries: 5% de descuento. Arranca 10 dientes: 10% de descuento.</p>
+  <div class="more">
+    <span>Más diversión</span>
+    <button class="chip" id="fairyBtn" type="button">Hada de los dientes <span class="coins" id="coins">0</span></button>
+    <button class="chip" id="slapBtn" type="button">Manotazo</button>
+  </div>
+  <div class="phrases" id="phrases" aria-live="polite"></div>
   <div class="gate" id="gate" hidden>
     <h2>D<span style="color:var(--coral)">u</span>lcident</h2>
     <p id="gateMsg">La boca de Dulcident es un juguete de escritorio. Ábrela en una pantalla más grande para jugar, o baja para conocer la clínica.</p>
   </div>
-</div>
+</section>
 
-<section class="panel" id="equipo" aria-labelledby="t-equipo">
+<section class="sec" id="equipo" data-pose="team" aria-labelledby="t-equipo">
   <div class="sec-head">
-    <div><p class="kicker">El equipo</p><h2 id="t-equipo">Cuatro herramientas. <em>Cero miedo.</em></h2></div>
-    <p>Nuestro personal está hecho de gomita y de buenas intenciones. Pasa el cursor sobre cada uno: te siguen con la mirada y reaccionan.</p>
+    <h2 id="t-equipo">Conoce al equipo</h2>
+    <p>Cuatro herramientas con ojos. Siguen tu cursor, así que pórtate bien.</p>
   </div>
   <div class="stage" id="teamStage"><canvas id="teamCanvas" aria-label="Los cuatro personajes de Dulcident"></canvas></div>
   <div class="team" id="team">
-    <article class="member" data-i="0" style="--c:#3FD6B0;--c2:#1E8F72">
+    <article class="member glass" data-i="0" style="--c:#3FD6B0;--c2:#1E8F72">
       <h3><i></i>Dr. Drill</h3><p class="role">Taladro · Caries</p>
       <p>Zumba antes de hablar. Encuentra cada mancha oscura y la deja brillando como plata.</p>
     </article>
-    <article class="member" data-i="1" style="--c:#E8465C;--c2:#C2364B">
+    <article class="member glass" data-i="1" style="--c:#E8465C;--c2:#C2364B">
       <h3><i></i>Pinchy</h3><p class="role">Fórceps · Extracciones</p>
-      <p>Abre el pico, se concentra y jala. Pone cara de sorpresa en cada pop, aunque ya lleve mil.</p>
+      <p>Abre el pico, se concentra y jala. Pone cara de sorpresa en cada pop.</p>
     </article>
-    <article class="member" data-i="2" style="--c:#9D6CF5;--c2:#7346D6">
+    <span class="gap" aria-hidden="true"></span>
+    <article class="member glass" data-i="2" style="--c:#9D6CF5;--c2:#7346D6">
       <h3><i></i>Bristles</h3><p class="role">Cepillo · Limpieza</p>
-      <p>Lleva cerdas en filas perfectas y nunca se salta los molares de atrás. Se menea cuando está feliz.</p>
+      <p>Cerdas en filas perfectas. Nunca se salta los molares de atrás.</p>
     </article>
-    <article class="member" data-i="3" style="--c:#F6C84A;--c2:#B98A0E">
+    <article class="member glass" data-i="3" style="--c:#F6C84A;--c2:#B98A0E">
       <h3><i></i>Flossy</h3><p class="role">Hilo dental · Prevención</p>
-      <p>Tiene cola de hilo rosa y paciencia infinita. Llega a donde el cepillo no alcanza.</p>
+      <p>Cola de hilo rosa y paciencia infinita. Llega a donde el cepillo no alcanza.</p>
     </article>
   </div>
 </section>
 
-<section class="panel" id="resenas" aria-labelledby="t-resenas">
-  <div class="sec-head">
-    <div><p class="kicker">Lo que dicen los pacientes</p><h2 id="t-resenas">Todos nuestros pacientes <em>son dientes.</em></h2></div>
+<section class="sec" id="resenas" data-pose="reviews" aria-labelledby="t-resenas">
+  <div class="rv-left">
+    <h2 id="t-resenas">Lo que dicen nuestros pacientes</h2>
+    <p class="sub">Todos son dientes. Todas son inventadas.</p>
     <div class="score">
       <b>4.9</b>
-      <div><div class="stars" aria-label="4.9 de 5 estrellas">★★★★★</div><small>1,248 reseñas verificadas*</small></div>
+      <div><div class="stars" aria-label="4.9 de 5 estrellas">★★★★★</div><small>1,248 reseñas*</small></div>
       <div class="faces" id="faces"></div>
     </div>
   </div>
   <div class="reviews" id="reviews"></div>
-  <p class="note" style="margin:0;font-size:12.5px;font-weight:700;color:var(--ink-soft)">*Reseñas de demostración. Dulcident es una clínica ficticia.</p>
 </section>
 
-<section class="panel" id="como" aria-labelledby="t-como">
+<section class="sec" id="como" data-pose="how" aria-labelledby="t-como">
   <div class="sec-head">
-    <div><p class="kicker">Cómo está hecho</p><h2 id="t-como">Todo es código. <em>Ni un modelo 3D descargado.</em></h2></div>
-    <p>La boca, los dientes y los personajes salen de fórmulas y piezas simples. Así funciona por dentro.</p>
+    <h2 id="t-como">Cómo se hizo</h2>
+    <p>Sin modelos descargados ni videos. La boca, la física y el sonido salen de código escrito a mano.</p>
   </div>
   <div class="how">
-    <article style="--c:#FFE1E6">
-      <div class="ico" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 26 26"><path d="M3 18 Q13 2 23 18" fill="none" stroke="#E8465C" stroke-width="5" stroke-linecap="round"/></svg></div>
-      <h3>Una boca de fórmulas</h3>
-      <p>Las encías son un tubo que sigue una herradura matemática. Cada diente es una esfera estirada hasta parecer muela, canino o incisivo, colocada según su ancho real.</p>
-    </article>
-    <article style="--c:#D7F5EC">
-      <div class="ico" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 26 26"><path d="M3 13 q3 -6 6 0 t6 0 t6 0" fill="none" stroke="#1E8F72" stroke-width="3.5" stroke-linecap="round"/></svg></div>
-      <h3>Gelatina con resortes</h3>
-      <p>La encía es una cadena de resortes. Cuando jalas un diente, empuja a sus vecinos y todo tiembla. El diente se afloja con cada meneo y sale con <code>pop</code> al pasar un umbral.</p>
-    </article>
-    <article style="--c:#ECE3FF">
-      <div class="ico" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="8" fill="none" stroke="#7346D6" stroke-width="3.5"/><circle cx="10" cy="10" r="2.5" fill="#7346D6"/></svg></div>
-      <h3>Luz a través de gomita</h3>
-      <p>Material físico con transmisión, grosor y barniz: la luz entra, se tiñe de rojo por dentro y sale con un brillo mojado. Un mapa de entorno pone los reflejos.</p>
-    </article>
-    <article style="--c:#FFF1C9">
-      <div class="ico" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 26 26"><path d="M3 13h3l3-7 4 14 3-9 2 2h5" fill="none" stroke="#B98A0E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <h3>Sonido que sale de la física</h3>
-      <p>Nada se reproduce de un archivo. Web Audio sintetiza cada efecto en vivo: la encía cruje según la tensión y los dientes suenan según la fuerza del choque.</p>
-    </article>
+    <div class="col">
+      <article class="glass"><h3><i style="--c:#E8465C"></i>Una boca de fórmulas</h3>
+        <p>La encía sigue una herradura matemática y cada diente es una esfera estirada hasta parecer muela, canino o incisivo.</p></article>
+      <article class="glass"><h3><i style="--c:#2FB892"></i>Gelatina con resortes</h3>
+        <p>La encía es una cadena de resortes. Al jalar un diente empuja a sus vecinos, se afloja con cada meneo y sale con <code>pop</code>.</p></article>
+    </div>
+    <span class="gap" aria-hidden="true"></span>
+    <div class="col">
+      <article class="glass"><h3><i style="--c:#8F63E8"></i>Luz dentro de la gomita</h3>
+        <p>Material con transmisión y grosor: la luz entra, se tiñe de rojo y sale brillando. Sombra suave y un piso que refleja.</p></article>
+      <article class="glass"><h3><i style="--c:#F4C542"></i>El sonido sale de la física</h3>
+        <p>Nada viene de un archivo. Web Audio sintetiza cada crujido según la tensión del jalón y cada choque según su fuerza.</p></article>
+    </div>
   </div>
+  <a class="learn glass" href="#aprende"><span>¿Quieres aprender a hacer esto?</span><b>Ver más</b></a>
 </section>
 
-<section class="panel" id="reserva" aria-labelledby="t-reserva">
+<section class="sec" id="reserva" data-pose="book" aria-labelledby="t-reserva">
   <div class="book-fx" id="bookFx" aria-hidden="true"></div>
   <div class="sec-head">
-    <div><p class="kicker">Reserva</p><h2 id="t-reserva">Tu turno en <em>el sillón.</em></h2></div>
-    <p>Elige el diente que te preocupa y una fecha. Si ganaste descuentos jugando arriba, ya vienen en tu ticket.</p>
+    <h2 id="t-reserva">Tu turno en el sillón.</h2>
+    <p>Formulario falso, dentista falso, rebote de verdad. Nada de lo que escribas sale de aquí.</p>
   </div>
   <div class="book">
-    <form class="form" id="bookForm" novalidate>
-      <div class="row2">
-        <div class="field"><label for="f-name">Nombre</label><input id="f-name" name="name" autocomplete="name" placeholder="Ana Muelas" required></div>
-        <div class="field"><label for="f-email">Correo</label><input id="f-email" name="email" type="email" autocomplete="email" placeholder="ana@correo.com" required></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label for="f-date">Fecha</label><input id="f-date" name="date" type="date" required></div>
-        <div class="field"><label for="f-time">Hora</label>
-          <select id="f-time" name="time"><option>09:30</option><option>11:00</option><option selected>15:30</option><option>17:00</option><option>18:30</option></select></div>
-      </div>
-      <div>
-        <p class="legend" id="jawLegend" style="margin:0 0 6px">¿Qué diente te preocupa?</p>
-        <div class="jaw" id="jaw"><p class="picked" id="picked">Toca un diente del modelo</p></div>
+    <div class="pick-hint glass"><span class="n">1</span><div><b>¿Cuál diente te da lata?</b><p class="picked" id="picked">Tócalo en la boca</p></div></div>
+    <form class="form glass" id="bookForm" novalidate>
+      <div class="step"><span class="n">2</span><div class="grow">
+        <label class="legend" for="f-pain">¿Cuánto te duele?</label>
+        <div class="pain"><span class="pface" id="painFace"></span><input id="f-pain" type="range" min="1" max="10" value="4"><output id="painOut" for="f-pain">4</output></div>
+      </div></div>
+      <div class="step"><span class="n">3</span><div class="grow">
+        <p class="legend" id="lg-flavor">Elige tu sabor</p>
+        <div class="chips" role="radiogroup" aria-labelledby="lg-flavor" data-name="flavor">
+          <button type="button" class="opt on" data-v="Fresa">Fresa</button><button type="button" class="opt" data-v="Menta">Menta</button><button type="button" class="opt" data-v="Uva">Uva</button><button type="button" class="opt" data-v="Limón">Limón</button>
+        </div>
+      </div></div>
+      <div class="step"><span class="n">4</span><div class="grow">
+        <p class="legend" id="lg-when">¿Cuándo?</p>
+        <div class="chips" role="radiogroup" aria-labelledby="lg-when" data-name="when">
+          <button type="button" class="opt on" data-v="Hoy">Hoy</button><button type="button" class="opt" data-v="Mañana">Mañana</button><button type="button" class="opt" data-v="Esta semana">Esta semana</button><button type="button" class="opt" data-v="Cuando se caiga solo">Cuando se caiga solo</button>
+        </div>
+      </div></div>
+      <div class="row-end">
+        <div class="field"><label for="f-name">Tu nombre</label><input id="f-name" name="name" autocomplete="name" placeholder="Ana Muelas"></div>
+        <button class="btn primary submit" type="submit">Agenda tu cita</button>
       </div>
       <p class="err" id="formErr" role="alert"></p>
-      <button class="btn primary submit" type="submit">Reservar mi cita</button>
     </form>
-    <div class="ticket" id="ticket" aria-live="polite">
+    <div class="ticket" id="ticket" aria-live="polite" hidden>
       <span class="stamp">¡Reservado!</span>
       <h3>Tu ticket</h3>
       <dl>
-        <dt>Paciente</dt><dd id="tk-name">Por completar</dd>
-        <dt>Cita</dt><dd id="tk-when">Por elegir</dd>
-        <dt>Diente</dt><dd id="tk-tooth">Por elegir</dd>
+        <dt>Paciente</dt><dd id="tk-name"></dd>
+        <dt>Diente</dt><dd id="tk-tooth"></dd>
+        <dt>Dolor</dt><dd id="tk-pain"></dd>
+        <dt>Sabor</dt><dd id="tk-flavor"></dd>
+        <dt>Cuándo</dt><dd id="tk-when"></dd>
         <dt>Bonus</dt><dd class="bonus" id="tk-bonus">Juega arriba para ganar descuentos</dd>
       </dl>
-      <hr>
-      <p class="note">Demostración: este formulario no envía nada ni guarda tus datos.</p>
     </div>
   </div>
 </section>
 
-<footer class="foot">
+<section class="sec cta" id="aprende" data-pose="away" aria-labelledby="t-cta">
+  <p class="kicker">Hecho con Three.js, Web Audio y mucha azúcar</p>
+  <h2 id="t-cta">¿Quieres aprender a hacer esto?</h2>
+  <p>Todo el código vive en tu carpeta, dividido por partes y comentado en español. Ábrelo, cambia un número y mira qué pasa.</p>
+  <a class="btn lemon" href="#inicio" id="againBtn">Volver a jugar</a>
+</section>
+
+<footer class="foot" data-pose="away">
   <p class="mega" id="mega" aria-label="Dulcident"></p>
   <div class="foot-row">
     <p>Dulcident · Clínica dental de gomita ficticia</p>
-    <p>Hecho con Three.js, Web Audio y mucha azúcar</p>
+    <p>*Reseñas y clínica de demostración.</p>
   </div>
 </footer>
+
+</main>
 
 <script type="module" src="src/main.js"></script>
 </body>

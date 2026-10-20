@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Sound } from '../core/sound.js';
 import { makeSoftMirror } from './mirror.js';
+import { POSES, targetPose } from '../core/stage.js';
 
 const $ = s => document.querySelector(s);
-const card = $('#card'), canvas = $('#scene'), fx = $('#fx');
+const card = $('#inicio'), canvas = $('#scene'), fx = $('#fx');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let started = false;
 
 function gateCheck(){
-  const ok = card.clientWidth >= 760 && card.clientHeight >= 460 && !matchMedia('(pointer: coarse)').matches;
+  const ok = innerWidth >= 760 && innerHeight >= 460 && !matchMedia('(pointer: coarse)').matches;
   $('#gate').hidden = ok;
   if (ok && !started){ started = true; init().catch(err => { console.error(err); $('#gateMsg').textContent = 'Tu navegador no pudo iniciar el 3D (WebGL). Prueba con Chrome actualizado.'; $('#gate').hidden = false; }); }
 }
@@ -239,7 +240,8 @@ async function init(){
     const out = new THREE.Vector3(0, 1, 0).applyQuaternion(q); // hacia la corona
     const mesh = new THREE.Mesh(toothGeos[sl.k], toothMat);
     mesh.position.copy(rest); mesh.quaternion.copy(q); world.add(mesh);
-    const tooth = { mesh, ty, jaw, rest, restQ:q.clone(), out, pos:rest.clone(), q:q.clone(), vel:new THREE.Vector3(), w:new THREE.Vector3(),
+    const NAMES = ['incisivo central', 'incisivo lateral', 'canino', 'primer premolar', 'segundo premolar', 'primer molar'];
+    const tooth = { name:`${NAMES[sl.k]} ${jaw ? 'superior' : 'inferior'} ${sl.side < 0 ? 'derecho' : 'izquierdo'}`, mesh, ty, jaw, rest, restQ:q.clone(), out, pos:rest.clone(), q:q.clone(), vel:new THREE.Vector3(), w:new THREE.Vector3(),
       disp:new THREE.Vector3(), dv:new THREE.Vector3(), lat:new THREE.Vector3(), loose:0, state:'anchored',
       r:Math.max(ty.w, ty.h, ty.d) * .42, fi:(sl.th + TH) / (2 * TH) * (K - 1),
       socket:rest.clone().addScaledVector(out, -(ty.h / 2 - .1)), lastClack:0, cavity:CAVITY.has(`${jaw}:${sl.side}:${sl.k}`), drill:0, filled:false,
@@ -337,42 +339,56 @@ async function init(){
 
   /* ── Letras gigantes de la marca, pegadas a la pared del fondo ── */
   try { await Promise.race([document.fonts.load('900 200px Nunito'), new Promise(r => setTimeout(r, 2500))]); } catch(e){}
-  const wmCanvas = document.createElement('canvas'); wmCanvas.width = 2400; wmCanvas.height = 560;
-  { const x = wmCanvas.getContext('2d'); x.fillStyle = CARD; x.fillRect(0, 0, 2400, 560);
-    x.font = "900 400px Nunito, 'Arial Rounded MT Bold', sans-serif"; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.save(); x.shadowColor = 'rgba(70,130,105,.28)'; x.shadowBlur = 40; x.shadowOffsetY = 18; x.fillStyle = '#FFFFFF'; x.fillText('Dulcident', 1200, 300); x.restore();
-    x.fillStyle = '#FFFFFF'; x.fillText('Dulcident', 1200, 300); }
+  // "Dulci  dent" con un hueco al centro: la boca ocupa ese hueco, como si se comiera el logo
+  const WM_W = 3200, WM_H = 640, WM_GAP = 700;
+  const wmCanvas = document.createElement('canvas'); wmCanvas.width = WM_W; wmCanvas.height = WM_H;
+  { const x = wmCanvas.getContext('2d');
+    x.font = "900 400px Nunito, 'Arial Rounded MT Bold', sans-serif"; x.textBaseline = 'middle';
+    const left = [['D', '#FFFFFF'], ['u', '#F2705F'], ['lci', '#FFFFFF']], right = 'dent', Y = 380;
+    const lw = left.reduce((a, [t]) => a + x.measureText(t).width, 0);
+    const draw = () => { let cx = WM_W / 2 - WM_GAP / 2 - lw;
+      for (const [t, c] of left){ x.fillStyle = c; x.fillText(t, cx, Y); cx += x.measureText(t).width; }
+      x.fillStyle = '#FFFFFF'; x.fillText(right, WM_W / 2 + WM_GAP / 2, Y); };
+    x.save(); x.shadowColor = 'rgba(60,120,95,.32)'; x.shadowBlur = 46; x.shadowOffsetY = 22; draw(); x.restore(); draw();
+    x.font = "800 92px Nunito, sans-serif"; x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.95)';
+    x.save(); x.shadowColor = 'rgba(60,120,95,.25)'; x.shadowBlur = 18; x.shadowOffsetY = 8; x.fillText('clínica.', WM_W / 2, 150); x.restore(); }
   const wmTex = new THREE.CanvasTexture(wmCanvas); wmTex.colorSpace = THREE.SRGBColorSpace; wmTex.anisotropy = 4;
-  const wordmark = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map:wmTex, toneMapped:false }));
+  const wordmark = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map:wmTex, toneMapped:false, transparent:true, depthWrite:false }));
+  wordmark.renderOrder = -3;
   scene.add(wordmark);
   const WM_DIST = 17;
   let wmRise = reduceMotion ? 1 : 0;
 
   /* ── Tamaño y encuadre ── */
   const bounds = { xMin:-4, xMax:4, zMin:-2.4, zMax:3.2 };
-  let W = 1, H = 1, worldBaseX = .6;
+  let W = 1, H = 1, worldBaseX = 0;
+  // posición horizontal en pantalla (0 a 1) → x en el mundo, a la distancia de la boca
+  const screenX = (x, dist = camera.position.distanceTo(camTarget)) => (x - .5) * 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
   function resize(){
-    W = card.clientWidth; H = card.clientHeight; if (!W || !H) return;
+    W = innerWidth; H = innerHeight; if (!W || !H) return;
     renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
-    // la boca vive en el lado derecho: su centro queda cerca del 66% del ancho
-    { const d = camera.position.distanceTo(camTarget), vw = 2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
-      worldBaseX = vw * (camera.aspect > 1.45 ? .17 : .14); }
+    worldBaseX = screenX(POSES.hero.x);
     // límites del piso visibles en pantalla
     const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR), hit = new THREE.Vector3();
     ray.setFromCamera(new THREE.Vector2(-.97, -.75), camera); if (ray.ray.intersectPlane(plane, hit)) bounds.xMin = hit.x - worldBaseX;
     ray.setFromCamera(new THREE.Vector2(.97, -.75), camera); if (ray.ray.intersectPlane(plane, hit)) bounds.xMax = hit.x - worldBaseX;
     placeWordmark();
   }
-  const camFwd = new THREE.Vector3(), camUp = new THREE.Vector3();
+  const camFwd = new THREE.Vector3(), camUp = new THREE.Vector3(), _wmR = new THREE.Vector3();
+  // pose actual de la boca (se suaviza hacia la que pide el scroll)
+  const P = { ...POSES.hero }, TP = {};
   function placeWordmark(){
     camera.getWorldDirection(camFwd); camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
     const vh = 2 * WM_DIST * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), vw = vh * camera.aspect;
-    const w = Math.min(vw * .86, vh * 2.6), h = w * 560 / 2400;
+    const w = vw * 1.12, h = w * WM_H / WM_W;
+    const k = P.wm * wmRise;
     wordmark.scale.set(w, h, 1); wordmark.quaternion.copy(camera.quaternion);
-    wordmark.position.copy(camera.position).addScaledVector(camFwd, WM_DIST).addScaledVector(camUp, vh * (.27 - (1 - wmRise) * .06));
-    wordmark.material.opacity = 1;
+    _wmR.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    wordmark.position.copy(camera.position).addScaledVector(camFwd, WM_DIST).addScaledVector(camUp, vh * (.25 + (1 - k) * .1))
+      .addScaledVector(_wmR, screenX(P.x, WM_DIST));
+    wordmark.material.opacity = k; wordmark.visible = k > .01;
   }
-  new ResizeObserver(resize).observe(card); resize();
+  addEventListener('resize', resize); resize();
 
   /* ── Entrada ── */
   const intro = { y:reduceMotion ? 0 : 7, v:0, on:!reduceMotion, t:0 };
@@ -387,6 +403,7 @@ async function init(){
   const grabPlane = new THREE.Plane(), grabArm = new THREE.Vector3();
   let yaw = 0, pitch = 0, yawT = 0, pitchT = 0, yawV = 0;
 
+  const playing = () => P.play > .5, booking = () => P.book > .5;
   canvas.addEventListener('pointermove', e => { if (demo) return; setPtr(e.clientX, e.clientY); ptr.inside = true;
     if (orbit){ yawT = THREE.MathUtils.clamp(orbit.yaw + (e.clientX - orbit.x) * .005, -.75, .75); pitchT = THREE.MathUtils.clamp(orbit.pitch + (e.clientY - orbit.y) * .003, -.2, .32); } });
   let realInside = false;
@@ -403,6 +420,8 @@ async function init(){
     return null;
   }
   function down(){
+    if (booking()){ const t = pick(); if (t && t.state === 'anchored') chooseTooth(t); return; }
+    if (!playing()) return;
     const t = pick();
     if (t){
       if (t.cavity && !t.filled && t.state === 'anchored'){ drilling = t; Sound.drill.start(); return; }
@@ -428,7 +447,7 @@ async function init(){
     $('#offPill').classList.toggle('won', off > 0); $('#coins').textContent = state.coins;
     window.dispatchEvent(new CustomEvent('dulci:premio', { detail:{ off, caries:state.rewardCaries, diez:state.rewardTen } }));
   }
-  const cardRect = () => card.getBoundingClientRect();
+  const cardRect = () => ({ left:0, top:0 });   // el lienzo y las chispas ocupan toda la ventana
   const _sv = new THREE.Vector3();
   function toCard(local){ _sv.copy(local); world.localToWorld(_sv); _sv.project(camera); return { x:(_sv.x + 1) / 2 * W, y:(1 - _sv.y) / 2 * H }; }
   const PALETTE = ['#F2705F', '#8F63E8', '#2FB892', '#F4C542', '#FF8FB1', '#E8465C'];
@@ -531,6 +550,32 @@ async function init(){
   $('#fairyBtn').addEventListener('click', fairy);
   $('#soundBtn').addEventListener('click', e => { Sound.unlock(); const m = !Sound.muted; Sound.setMuted(m); e.currentTarget.setAttribute('aria-pressed', String(!m)); e.currentTarget.querySelector('b').textContent = m ? 'no' : 'sí'; });
 
+  /* ── Reserva: elegir el diente tocándolo en la boca ── */
+  const pickMat = toothMat.clone(); pickMat.color.set('#FF9A8C'); pickMat.attenuationColor = new THREE.Color('#E0402E');
+  let chosen3d = null;
+  function chooseTooth(t){
+    Sound.unlock();
+    if (chosen3d) chosen3d.mesh.material = toothMat;
+    chosen3d = t; t.mesh.material = pickMat; t.dv.addScaledVector(t.out, 2.4); squash.v += .5;
+    Sound.boing(); const sp = toCard(t.pos); sparkle(sp.x, sp.y, 9, ['#F2705F', '#FFFDF9', '#F4C542']);
+    window.dispatchEvent(new CustomEvent('dulci:pick3d', { detail:{ name:t.name } }));
+  }
+
+  /* ── Manotazo: varios dientes salen volando de golpe ── */
+  function slap(){
+    Sound.unlock(); if (!playing()) return;
+    const pool = teeth.filter(t => t.state === 'anchored' && !(t.cavity && !t.filled)).sort(() => Math.random() - .5).slice(0, 4);
+    if (!pool.length){ fairy(); return; }
+    Sound.whoosh(); squash.v += 2.4;
+    pool.forEach((t, i) => setTimeout(() => {
+      popTooth(t); t.state = 'free';
+      t.vel.set(-3.5 - Math.random() * 3.5, 3 + Math.random() * 2.5, (Math.random() - .3) * 3);
+      t.w.set((Math.random() - .5) * 14, (Math.random() - .5) * 14, (Math.random() - .5) * 14);
+    }, i * 45));
+    setTimeout(() => say('¡Manotazo!', '#8F63E8', true), 260);
+  }
+  $('#slapBtn').addEventListener('click', slap);
+
   /* ── Demostración: Pinchy saca un diente solo ── */
   const wait = ms => new Promise(r => setTimeout(r, ms));
   function moveTo(x, y, ms){ return new Promise(res => { const x0 = ptr.cx, y0 = ptr.cy, t0 = performance.now();
@@ -567,7 +612,7 @@ async function init(){
   const fwdPlane = new THREE.Plane();
   let last = performance.now(), dustT = 0, time = 0, heroVisible = true;
   // fuera de vista, la boca se pausa para no gastar
-  new IntersectionObserver(es => { heroVisible = es[0].isIntersecting; if (!heroVisible){ up(); Sound.squish.stop(); Sound.drill.stop(); } }).observe(card);
+  // la boca nunca se pausa por scroll (viaja con la página); solo deja de dibujarse tapada por el final
 
   function frame(now){
     requestAnimationFrame(frame);
@@ -576,20 +621,28 @@ async function init(){
     // entrada: la boca cae como gelatina
     if (intro.on){ intro.t += dt; if (intro.t > .55){ intro.v -= 26 * dt; intro.y += intro.v * dt;
         if (intro.y <= 0){ intro.y = 0; if (intro.v < -2){ squash.v += -intro.v * .55; Sound.creak(); } intro.v = -intro.v * .18; if (Math.abs(intro.v) < .8){ intro.v = 0; intro.on = false; } } } }
+    // pose que pide el scroll, suavizada para que la boca "nade" entre secciones
+    targetPose(TP); { const k = Math.min(1, dt * 6); for (const key in P) P[key] += (TP[key] - P[key]) * k; }
+    worldBaseX = screenX(P.x);
+    if (!playing() && (grabbed || drilling || orbit)) up();
     wmRise = Math.min(1, wmRise + dt * 1.6); placeWordmark();
     squash.v += (-170 * squash.s - 9 * squash.v) * dt; squash.s += squash.v * dt; squash.s = THREE.MathUtils.clamp(squash.s, -.25, .25);
 
     yaw += (yawT - yaw) * Math.min(1, dt * 8); pitch += (pitchT - pitch) * Math.min(1, dt * 8);
     const yawVel = (yawT - yaw) * 8;
-    world.position.set(worldBaseX, intro.y, 0);
-    sun.target.position.set(worldBaseX, 0, 0); sun.position.copy(sun.target.position).add(SUN_OFF);
-    mirror.position.x = worldBaseX;
-    world.rotation.set(pitch, yaw, 0);
-    world.scale.set(1 + squash.s * .5, 1 - squash.s, 1 + squash.s * .5);
+    // en pantallas angostas la boca se achica para que quepa
+    const S = P.s * THREE.MathUtils.clamp(camera.aspect / 1.7, .55, 1), floorY = P.dy + FLOOR * S;
+    world.position.set(worldBaseX, intro.y + P.dy, 0);
+    sun.target.position.set(worldBaseX, P.dy, 0); sun.position.copy(sun.target.position).add(SUN_OFF);
+    mirror.position.set(worldBaseX, floorY, 0); floor.position.y = floorY + .001;
+    world.rotation.set(pitch + P.rx, yaw + P.ry, 0);
+    world.scale.set(S * (1 + squash.s * .5), S * (1 - squash.s), S * (1 + squash.s * .5));
     const shK = 1 / (1 + intro.y * .25); mouthShadow.scale.set(5.4 * shK, 4.2 * shK, 1); mouthShadow.material.opacity = shK;
 
     raycaster.setFromCamera(ndc, camera);
-    if (!grabbed && !drilling && !orbit) hover = ptr.inside ? pick() : null;
+    if (!grabbed && !drilling && !orbit) hover = ptr.inside && (playing() || booking()) ? pick() : null;
+    { const cls = playing() && ptr.inside ? 'tool' : booking() && hover && hover.state === 'anchored' ? 'pointer' : '';
+      if (canvas.dataset.c !== cls){ canvas.dataset.c = cls; canvas.classList.toggle('tool', cls === 'tool'); canvas.classList.toggle('pointer', cls === 'pointer'); } }
 
     // punto objetivo del agarre en coordenadas locales
     let target = null;
@@ -759,7 +812,7 @@ async function init(){
     // herramienta-cursor
     const wantDrill = (drilling || (hover && hover.cavity && !hover.filled && hover.state === 'anchored' && !grabbed));
     toolMix += ((wantDrill ? 1 : 0) - toolMix) * Math.min(1, dt * 14);
-    const visible = ptr.inside || demo || grabbed;
+    const visible = (ptr.inside || demo || grabbed) && playing();
     pinchyScale += (((visible && toolMix < .5) ? 1 : 0) - pinchyScale) * Math.min(1, dt * 16);
     drillScale += (((visible && toolMix >= .5) ? 1 : 0) - drillScale) * Math.min(1, dt * 16);
     if (grabbed){ toolTarget.copy(grabbed.pos).add(grabArm); world.localToWorld(toolTarget); }
@@ -802,7 +855,7 @@ async function init(){
     if (grabbed && grabbed.state === 'anchored') Sound.squish.set((n, ct) => { const tt = grabbed.tension || 0;
       n.g.gain.setTargetAtTime(Math.min(.3, tt * .26) * (.7 + Math.random() * .6), ct, .03); n.f.frequency.setTargetAtTime(280 + tt * 900 + Math.random() * 120, ct, .03); });
 
-    renderer.render(scene, camera);
+    if (P.dy < 7) renderer.render(scene, camera);
   }
   // todo lo sólido proyecta sombra (menos las sombras falsas y el piso)
   for (const root of [world, pinchy, drill]) root.traverse(o => {

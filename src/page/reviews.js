@@ -27,11 +27,12 @@ const rv = document.getElementById('reviews'), faces = document.getElementById('
 REVIEWS.forEach((r, i) => {
   const av = r.tongue ? tongue(34) : face(34, r.mood);
   if (i < 4) faces.insertAdjacentHTML('beforeend', `<span class="av" style="--c:${r.c}">${av}</span>`);
-  rv.insertAdjacentHTML('beforeend', `<article class="review">
+  if (![0, 2, 3, 5].includes(i)) return;   // cuatro tarjetas flotando alrededor de la boca
+  rv.insertAdjacentHTML('beforeend', `<article class="review glass" style="--i:${i}">
     <header><span class="av" style="--c:${r.c}">${av}</span><div><strong>${r.who}</strong><span>${r.where} · ${r.when}</span></div></header>
     <div class="stars" aria-label="5 de 5 estrellas">★★★★★</div>
     <blockquote>${r.text}</blockquote>
-    ${r.shot ? `<div class="shot" style="--c:${r.shot}">${r.tongue ? tongue(92) : face(92, r.mood)}</div>` : ''}
+    ${r.shot ? `<div class="shot" style="--c:${r.shot}">${r.tongue ? tongue(64) : face(64, r.mood)}</div>` : ''}
   </article>`);
 });
 

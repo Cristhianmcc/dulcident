@@ -25,7 +25,11 @@ Landing de práctica de una clínica dental de gomita ficticia. Sirve para apren
 - Hero: la boca se arma con código (herradura matemática, dientes como esferas deformadas por tipo). La encía es una cadena de resortes. Los dientes sueltos tienen gravedad, rebote y choques simples. Pinchy y Dr. Drill son el cursor.
 - Material de gomita: `MeshPhysicalMaterial` con transmisión, grosor y barniz, más `RoomEnvironment` para los reflejos.
 - Sonido: Web Audio sintetizado en vivo; la encía cruje según la tensión del jalón.
-- El equipo 3D vive en un segundo canvas que solo dibuja cuando está a la vista. La boca se pausa al salir de vista.
+- Escenario único: el lienzo de la boca es fijo y llena la ventana; las secciones pasan por encima, transparentes. Cada sección tiene `data-pose` y `src/core/stage.js` define dónde va la boca en cada una (posición, escala, giro, si se juega o si sirve de selector). Entre secciones la pose se mezcla según el scroll.
+- Scroll suave con Lenis (`src/core/scroll.js`); si no carga, scroll nativo. La flecha de la muesca baja a la siguiente sección.
+- En la reserva el diente se elige tocándolo en la boca 3D (evento `dulci:pick3d`).
+- El equipo 3D vive en un segundo canvas transparente encima de la boca y solo dibuja cuando está a la vista.
+- `src/core/devtools.js` muestra los errores en pantalla (dentro del enlace publicado no hay consola).
 
 ## Identidad
 
@@ -42,6 +46,7 @@ Landing de práctica de una clínica dental de gomita ficticia. Sirve para apren
 ## Ideas pendientes
 
 - Física de gelatina real con tetraedros (XPBD) en un Web Worker, como Gomident.
-- Una sola boca que viaje con el scroll por todas las secciones (mover la cámara hacia un ancla por sección).
+- Rehacer la forma de la boca: una sola pieza cerrada por los lados, bien abierta y vista un poco desde arriba.
+- Cómo se hizo: corte de rayos X / tetraedros sobre media boca.
 - La Mano: un manotazo con física que tumba dientes.
 - Zoom con el pellizco del trackpad.
